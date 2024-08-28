@@ -1,6 +1,6 @@
 from src.network.socket_handler import SocketHandler
 from src.utils.logger import Logger
-import src.config
+from src.config.config 
 
 
 def main():

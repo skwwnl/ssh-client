@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-# .evn 파일 load
+# .env 파일 load
 load_dotenv()
 
 
@@ -10,8 +10,8 @@ class Config:
     VAULT_TOKEN = os.getenv("VAULT_TOKEN")
     VAULT_SECRET_PATH = os.getenv("VAULT_SECRET_PATH", "secret/data/server-info")
 
-    SERVER_HOST = os.getenv("SERVER_HOST", "10.0.0.10")
-    SERVER_PORT = int(os.getenv("SERVER_PORT"))
+    SERVER_HOST = "k8s.kprolabs.space"
+    SERVER_PORT = 2022
 
     @classmethod
     def get_vault_url(cls):
