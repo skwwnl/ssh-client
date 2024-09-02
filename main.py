@@ -1,6 +1,6 @@
 from src.network.socket_handler import SocketHandler
 from src.utils.logger import Logger
-import src.config
+from src.config.config import Config
 
 
 def main():
@@ -8,7 +8,7 @@ def main():
     handler = SocketHandler()
     try:
         # Replace with the actual SSH server address and port
-        handler.connect("example.com", 22)
+        handler.connect(Config.SERVER_HOST, Config.SERVER_PORT)
 
         # Send a simple message (this is not a valid SSH message, just for testing)
         handler.send(b"Hello, SSH Server!")
