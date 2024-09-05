@@ -1,65 +1,70 @@
 import re
-from .socket_handler import SocketHandler
-from .packet_manager import PacketManager
+from src.utils.logger import Logger
+from typing import Tuple
 
 
-class VersionExchange:
-    def __init__(self, socket_handler: SocketHandler, packet_manager: PacketManager):
-        self.socket_handler = socket_handler
-        self.packet_manager = packet_manager
-        self.client_version = "SSH-2.0-PythonSSHClient_1.0"
+class VersionExchanger:
+    def __init__(self, client_version: str):
+        self.logger = Logger.get_logger(__name__)
+        self.client_version = client_version
         self.server_version = None
-        self.MAX_VERSION_LENGTH = 255  # RFC 4253 specifies max length of 255 chars
+        self.supported_versions = ["^2.0"]  # 지원하는 SSH 버전 목록
 
-    def exchange_versions(self):
+    def get_client_version_string(self) -> str:
+        """클라이언트 버전 문자열을 반환합니다."""
+        return f"{self.client_version}\r\n"
+
+    def parse_server_version(self, version_string: str) -> Tuple[bool, str]:
         """
-        Perform the SSH version exchange with the server.
+        서버 버전 문자열을 파싱하고 유효성을 검사합니다.
+
+        :param version_string: 서버로부터 받은 버전 문자열
+        :return: (유효성 여부, 파싱된 버전 또는 에러 메시지)
         """
-        # Send client version
-        self.socket_handler.send(self.client_version.encode() + b"\r\n")
+        # 개행 문자 제거
+        version_string = version_string.strip()
 
-        # Receive server version
-        server_version_data = self.socket_handler.receive(
-            self.MAX_VERSION_LENGTH + 2
-        )  # +2 for \r\n
-        self.server_version = self._parse_server_version(server_version_data)
+        # 정규표현식을 사용하여 버전 문자열 파싱
+        match = re.match(r"SSH-(\d+\.\d+)-.*", version_string)
+        if not match:
+            return False, "Invalid version string format"
 
-        if not self._validate_server_version(self.server_version):
-            raise ValueError("Invalid server version string")
+        version = match.group(1)
+        if version not in self.supported_versions:
+            return False, f"Unsupported SSH version: {version}"
 
-        return self.server_version
+        self.server_version = version_string
+        return True, version
 
-    def _parse_server_version(self, version_data: bytes) -> str:
+    def exchange_versions(self, socket_handler) -> bool:
         """
-        Parse the server version string from the received data.
+        서버와 버전을 교환합니다.
+
+        :param socket_handler: 소켓 통신을 위한 핸들러 객체
+        :return: 버전 교환 성공 여부
         """
-        version_str = version_data.decode("utf-8").strip()
-        if len(version_str) > self.MAX_VERSION_LENGTH:
-            raise ValueError(
-                f"Server version string exceeds maximum length of {self.MAX_VERSION_LENGTH} characters"
-            )
+        try:
+            # 클라이언트 버전 전송
+            socket_handler.send(self.get_client_version_string().encode())
 
-        match = re.match(r"^SSH-2.0-(\S+)", version_str)
-        if match:
-            return match.group(0)
-        else:
-            raise ValueError("Invalid server version format")
+            # 서버 버전 수신
+            server_version_string = socket_handler.receive().decode()
 
-    def _validate_server_version(self, version: str) -> bool:
-        """
-        Validate the server version string.
-        """
-        return version.startswith("SSH-2.0-")
+            # 서버 버전 파싱 및 검증
+            is_valid, result = self.parse_server_version(server_version_string)
+            if not is_valid:
+                print(f"Version exchange failed: {result}")
+                return False
 
+            print(f"Version exchange successful. Server version: {self.server_version}")
+            return True
 
-# Usage example (this would typically be in another file, e.g., main.py)
-# if __name__ == "__main__":
-#     socket_handler = SocketHandler("example.com", 22)
-#     packet_manager = PacketManager()
-#     version_exchange = VersionExchange(socket_handler, packet_manager)
-#
-#     try:
-#         server_version = version_exchange.exchange_versions()
-#         print(f"Server version: {server_version}")
-#     except ValueError as e:
-#         print(f"Error during version exchange: {str(e)}")
+        except Exception as e:
+            print(f"Error during version exchange: {str(e)}")
+            return False
+
+    def get_negotiated_version(self) -> str:
+        """협상된 SSH 버전을 반환합니다."""
+        if self.server_version:
+            return self.supported_versions[0]  # 현재는 항상 2.0을 반환
+        return None
