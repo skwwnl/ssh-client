@@ -10,8 +10,10 @@ class Config:
     VAULT_TOKEN = os.getenv("VAULT_TOKEN")
     VAULT_SECRET_PATH = os.getenv("VAULT_SECRET_PATH", "secret/data/server-info")
 
-    SERVER_HOST = "k8s.kprolabs.space"
-    SERVER_PORT = 2022
+    SERVER_HOST = "monitor.kprolabs.space"
+    SERVER_PORT = 2024
+
+    SSH_CLIENT_VERSION = "SSH-2.0-PythonSSHClient_1.0"
 
     @classmethod
     def get_vault_url(cls):
